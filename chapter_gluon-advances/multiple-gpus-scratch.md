@@ -1,6 +1,6 @@
 # 多GPU计算——从零开始
 
-本教程我们将展示如何使用多个GPU计算，例如使用多个GPU训练模型。正如读者期望的那样，运行本节中的程序需要至少两块GPU。事实上，一台机器上安装多块GPU非常常见。这是因为主板上通常会有多个PCIe插槽。如果正确安装了NVIDIA驱动，我们可以通过`nvidia-smi`命令来查看当前机器上的全部GPU。
+本教程我们将展示如何使用多个GPU计算，例如使用多个GPU训练模型。正如你期望的那样，运行本节中的程序需要至少两块GPU。事实上，一台机器上安装多块GPU非常常见。这是因为主板上通常会有多个PCIe插槽。如果正确安装了NVIDIA驱动，我们可以通过`nvidia-smi`命令来查看当前机器上的全部GPU。
 
 ```{.python .input  n=1}
 !nvidia-smi
@@ -11,21 +11,22 @@
 
 ## 数据并行
 
-数据并行目前是深度学习里使用最广泛的将模型训练任务划分到多个GPU的办法。回忆一下我们在[“梯度下降和随机梯度下降——从零开始”](../chapter_optimization/gd-sgd-scratch.md)一节中介绍的使用优化算法训练模型的过程。下面我们就以小梯度随机梯度下降为例来介绍数据并行是如何工作的。
+数据并行目前是深度学习里使用最广泛的将模型训练任务划分到多个GPU的办法。回忆一下我们在[“梯度下降和随机梯度下降——从零开始”](../chapter_optimization/gd-sgd-scratch.md)一节中介绍的使用优化算法训练模型的过程。下面我们就以小批量随机梯度下降为例来介绍数据并行是如何工作的。
 
 假设一台机器上有$k$个GPU。给定需要训练的模型，每个GPU将分别独立维护一份完整的模型参数。在模型训练的任意一次迭代中，给定一个小批量，我们将该批量中的样本划分成$k$份并分给每个GPU一份。然后，每个GPU将分别根据自己分到的训练数据样本和自己维护的模型参数计算模型参数的梯度。
 接下来，我们把$k$个GPU上分别计算得到的梯度相加，从而得到当前的小批量梯度。
 之后，每个GPU都使用这个小批量梯度分别更新自己维护的那一份完整的模型参数。
 
-为了从零开始实现多GPU训练中的数据并行，让我们先导入需要的包。
+为了从零开始实现多GPU训练中的数据并行，让我们先导入需要的包或模块。
 
 ```{.python .input}
-import mxnet as mx
-from mxnet import autograd, gluon, nd
 import sys
-from time import time
 sys.path.append('..')
-import utils
+import gluonbook as gb
+import mxnet as mx
+from mxnet import autograd, nd
+from mxnet.gluon import loss as gloss
+from time import time
 ```
 
 ## 定义模型
@@ -60,11 +61,11 @@ def lenet(X, params):
     h2 = nd.flatten(h2)
     h3_linear = nd.dot(h2, params[4]) + params[5]
     h3 = nd.relu(h3_linear)
-    yhat = nd.dot(h3, params[6]) + params[7]
-    return yhat
+    y_hat = nd.dot(h3, params[6]) + params[7]
+    return y_hat
 
 # 交叉熵损失函数。
-sce_loss = gluon.loss.SoftmaxCrossEntropyLoss()
+loss = gloss.SoftmaxCrossEntropyLoss()
 ```
 
 ## 多GPU之间同步数据
@@ -132,23 +133,23 @@ print('output:', splitted)
 现在我们可以实现单个小批量上的多GPU训练了。它的实现主要依据本节介绍的数据并行方法。我们将使用刚刚定义的多GPU之间同步数据的辅助函数，例如`split_and_load`和`allreduce`。
 
 ```{.python .input  n=6}
-def train_batch(features, labels, gpu_params, ctx, lr):
-    # 划分小批量数据样本并复制到各个GPU上。
-    gpu_features = split_and_load(features, ctx)
-    gpu_labels = split_and_load(labels, ctx)
-    # 在各个GPU上计算损失。
+def train_batch(X, y, gpu_params, ctx, lr):
+    # 划分小批量数据样本并复制到各个 GPU 上。
+    gpu_Xs = split_and_load(X, ctx)
+    gpu_ys = split_and_load(y, ctx)
+    # 在各个 GPU 上计算损失。
     with autograd.record():
-        losses = [sce_loss(lenet(X, W), Y)
-                  for X, Y, W in zip(gpu_features, gpu_labels, gpu_params)]
-    # 在各个GPU上反向传播。
-    for loss in losses:
-        loss.backward()
-    # 把各个GPU上的梯度加起来，然后再广播到所有GPU上。
+        ls = [loss(lenet(gpu_X, gpu_W), gpu_y) 
+              for gpu_X, gpu_y, gpu_W in zip(gpu_Xs, gpu_ys, gpu_params)]
+    # 在各个 GPU 上反向传播。
+    for l in ls:
+        l.backward()
+    # 把各个 GPU 上的梯度加起来，然后再广播到所有 GPU 上。
     for i in range(len(gpu_params[0])):
         allreduce([gpu_params[c][i].grad for c in range(len(ctx))])
-    # 在各个GPU上更新自己维护的那一份完整的模型参数。
+    # 在各个 GPU 上更新自己维护的那一份完整的模型参数。
     for param in gpu_params:
-        utils.sgd(param, lr / features.shape[0])
+        gb.sgd(param, lr, X.shape[0])
 ```
 
 ## 训练函数
@@ -157,21 +158,21 @@ def train_batch(features, labels, gpu_params, ctx, lr):
 
 ```{.python .input  n=7}
 def train(num_gpus, batch_size, lr):
-    train_data, test_data = utils.load_data_fashion_mnist(batch_size)
+    train_iter, test_iter = gb.load_data_fashion_mnist(batch_size)
     ctx = [mx.gpu(i) for i in range(num_gpus)]
     print('running on:', ctx)
-    # 将模型参数复制到num_gpus个GPU上。
+    # 将模型参数复制到 num_gpus 个 GPU 上。
     gpu_params = [get_params(params, c) for c in ctx]
     for epoch in range(1, 6):
         start = time()
-        for features, labels in train_data:
-            # 对单个小批量上进行多GPU训练。
-            train_batch(features, labels, gpu_params, ctx, lr)
+        for X, y in train_iter:
+            # 对单个小批量上进行多 GPU 训练。
+            train_batch(X, y, gpu_params, ctx, lr)
         nd.waitall()
         print('epoch %d, time: %.1f sec' % (epoch, time() - start))
-        # 在GPU0上验证模型。
-        net = lambda data: lenet(data, gpu_params[0])
-        test_acc = utils.evaluate_accuracy(test_data, net, ctx[0])
+        # 在 GPU0 上验证模型。
+        net = lambda x: lenet(x, gpu_params[0])
+        test_acc = gb.evaluate_accuracy(test_iter, net, ctx[0])
         print('validation accuracy: %.4f' % test_acc)
 ```
 

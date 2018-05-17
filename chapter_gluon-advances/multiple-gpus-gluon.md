@@ -2,11 +2,12 @@
 
 在Gluon中，我们可以很方便地使用数据并行进行多GPU计算。比方说，我们并不需要自己实现[“多GPU计算——从零开始”](./multiple-gpus-scratch.md)一节里介绍的多GPU之间同步数据的辅助函数。
 
-先导入本节实验需要的包。同上一节，运行本节中的程序需要至少两块GPU。
+先导入本节实验需要的包或模块。同上一节，运行本节中的程序需要至少两块GPU。
 
 ```{.python .input}
 import mxnet as mx
 from mxnet import autograd, gluon, init, nd
+from mxnet.gluon import loss as gloss, utils as gutils
 import sys
 from time import time
 sys.path.append('..')
@@ -32,12 +33,12 @@ Gluon提供了上一节中实现的`split_and_load`函数。它可以划分一�
 
 ```{.python .input}
 x = nd.random.uniform(shape=(4, 1, 28, 28))
-gpu_x = gluon.utils.split_and_load(x, ctx)
+gpu_x = gutils.split_and_load(x, ctx)
 print(net(gpu_x[0]))
 print(net(gpu_x[1]))
 ```
 
-回忆一下[“模型参数”](../chapter_gluon-basics/parameters.md)一节中介绍的延后的初始化。现在，我们可以通过`data`访问初始化好的模型参数值了。需要注意的是，默认下`weight.data()`会返回CPU上的参数值。由于我们指定了2个GPU来初始化模型参数，我们需要指定GPU访问。我们看到，相同参数在不同的GPU上的值一样。
+回忆一下[“模型参数的延后初始化”](../chapter_gluon-basics/deferred-init.md)一节中介绍的延后的初始化。现在，我们可以通过`data`访问初始化好的模型参数值了。需要注意的是，默认下`weight.data()`会返回CPU上的参数值。由于我们指定了2个GPU来初始化模型参数，我们需要指定GPU访问。我们看到，相同参数在不同的GPU上的值一样。
 
 ```{.python .input}
 weight = net[1].params.get('weight')
@@ -54,36 +55,33 @@ print(weight.data(ctx[1])[0])
 我们先定义交叉熵损失函数。
 
 ```{.python .input}
-sce_loss = gluon.loss.SoftmaxCrossEntropyLoss()
+loss = gloss.SoftmaxCrossEntropyLoss()
 ```
 
 当我们使用多个GPU来训练模型时，`gluon.Trainer`会自动做数据并行，例如划分小批量数据样本并复制到各个GPU上，对各个GPU上的梯度求和再广播到所有GPU上。这样，我们就可以很方便地实现训练函数了。
 
 ```{.python .input  n=7}
 def train(num_gpus, batch_size, lr):
-    train_data, test_data = utils.load_data_fashion_mnist(batch_size)
+    train_iter, test_iter = utils.load_data_fashion_mnist(batch_size)
     ctx = [mx.gpu(i) for i in range(num_gpus)]
     print('running on:', ctx)
-    net.collect_params().initialize(init=init.Xavier(), ctx=ctx,
-                                    force_reinit=True)
+    net.initialize(init=init.Xavier(), ctx=ctx, force_reinit=True)
     trainer = gluon.Trainer(
         net.collect_params(), 'sgd', {'learning_rate': lr})
     for epoch in range(1, 6):
         start = time()
-        total_loss = 0
-        for features, labels in train_data:
-            gpu_data = gluon.utils.split_and_load(features, ctx)
-            gpu_labels = gluon.utils.split_and_load(labels, ctx)
+        for X, y in train_iter:
+            gpu_Xs = gutils.split_and_load(X, ctx)
+            gpu_ys = gutils.split_and_load(y, ctx)
             with autograd.record():
-                losses = [sce_loss(net(X), y) for X, y in zip(gpu_data,
-                                                              gpu_labels)]
-            for loss in losses:
-                loss.backward()
-            total_loss += sum([loss.sum().asscalar() for loss in losses])
+                ls = [loss(net(gpu_X), gpu_y) for gpu_X, gpu_y in zip(
+                    gpu_Xs, gpu_ys)]
+            for l in ls:
+                l.backward()
             trainer.step(batch_size)
         nd.waitall()
         print('epoch %d, training time: %.1f sec'%(epoch, time() - start))
-        test_acc = utils.evaluate_accuracy(test_data, net, ctx[0])
+        test_acc = utils.evaluate_accuracy(test_iter, net, ctx[0])
         print('validation accuracy: %.4f'%(test_acc))
 ```
 

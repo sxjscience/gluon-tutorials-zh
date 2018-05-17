@@ -1,4 +1,4 @@
-# 实战Kaggle比赛——使用Gluon对原始图像文件分类（CIFAR-10）
+# 实战Kaggle比赛：对原始图像文件分类（CIFAR-10）
 
 我们在[监督学习中的一章](../chapter_supervised-learning/kaggle-gluon-kfold.md)里，以[房价预测问题](https://www.kaggle.com/c/house-prices-advanced-regression-techniques)为例，介绍了如何使用``Gluon``来实战[Kaggle比赛](https://www.kaggle.com)。
 
@@ -7,8 +7,6 @@
 计算机视觉一直是深度学习的主战场，请
 
 > Get your hands dirty。
-
-
 
 
 ## Kaggle中的CIFAR-10原始图像分类问题
@@ -24,8 +22,6 @@
 比赛数据分为训练数据集和测试数据集。训练集包含5万张图片。测试集包含30万张图片：其中有1万张图片用来计分，但为了防止人工标注测试集，里面另加了29万张不计分的图片。
 
 两个数据集都是png彩色图片，大小为$32\times 32 \times 3$。训练集一共有10类图片，分别为飞机、汽车、鸟、猫、鹿、狗、青蛙、马、船和卡车。
-
-（那么问题来了，你觉得你用肉眼能把下面100个图片正确分类吗？）
 
 ![](../img/cifar10.png)
 
@@ -287,7 +283,7 @@ def get_net(ctx):
 import datetime
 import sys
 sys.path.append('..')
-import utils
+import gluonbook as gb
 
 def train(net, train_data, valid_data, num_epochs, lr, wd, ctx, lr_period, lr_decay):
     trainer = gluon.Trainer(
@@ -307,13 +303,13 @@ def train(net, train_data, valid_data, num_epochs, lr, wd, ctx, lr_period, lr_de
             loss.backward()
             trainer.step(batch_size)
             train_loss += nd.mean(loss).asscalar()
-            train_acc += utils.accuracy(output, label)
+            train_acc += gb.accuracy(output, label)
         cur_time = datetime.datetime.now()
         h, remainder = divmod((cur_time - prev_time).seconds, 3600)
         m, s = divmod(remainder, 60)
         time_str = "Time %02d:%02d:%02d" % (h, m, s)
         if valid_data is not None:
-            valid_acc = utils.evaluate_accuracy(valid_data, net, ctx)
+            valid_acc = gb.evaluate_accuracy(valid_data, net, ctx)
             epoch_str = ("Epoch %d. Loss: %f, Train acc %f, Valid acc %f, "
                          % (epoch, train_loss / len(train_data),
                             train_acc / len(train_data), valid_acc))
@@ -330,7 +326,7 @@ def train(net, train_data, valid_data, num_epochs, lr, wd, ctx, lr_period, lr_de
 我们将依据验证集的结果不断优化模型设计和调整参数。依据下面的参数设置，优化算法的学习率将在每80个epoch自乘0.1。
 
 ```{.python .input  n=8}
-ctx = utils.try_gpu()
+ctx = gb.try_gpu()
 num_epochs = 1
 learning_rate = 0.1
 weight_decay = 5e-4
@@ -386,4 +382,6 @@ df.to_csv('submission.csv', index=False)
 * 如果不使用增强数据的方法能拿到什么样的准确率？
 * 你还有什么其他办法可以继续改进模型和参数？小伙伴们都期待你的分享。
 
-**吐槽和讨论欢迎点**[这里](https://discuss.gluon.ai/t/topic/1545/)
+## 扫码直达[讨论区](https://discuss.gluon.ai/t/topic/1545/)
+
+![](../img/qr_kaggle-gluon-cifar10.svg)

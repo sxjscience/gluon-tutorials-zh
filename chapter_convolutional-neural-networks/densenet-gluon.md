@@ -1,4 +1,4 @@
-# DenseNet：稠密连接的卷积神经网络
+# 稠密连接的网络：DenseNet
 
 ResNet的跨层连接思想影响了接下来的众多工作。这里我们介绍其中的一个：[DenseNet](https://arxiv.org/pdf/1608.06993.pdf)。下图展示了这两个的主要区别：
 
@@ -119,27 +119,26 @@ def dense_net():
 ```{.python .input}
 import sys
 sys.path.append('..')
-import utils
+import gluonbook as gb
 from mxnet import gluon
 from mxnet import init
 
-train_data, test_data = utils.load_data_fashion_mnist(
+train_data, test_data = gb.load_data_fashion_mnist(
     batch_size=64, resize=32)
 
-ctx = utils.try_gpu()
+ctx = gb.try_gpu()
 net = dense_net()
 net.initialize(ctx=ctx, init=init.Xavier())
 
 loss = gluon.loss.SoftmaxCrossEntropyLoss()
 trainer = gluon.Trainer(net.collect_params(),
                         'sgd', {'learning_rate': 0.1})
-utils.train(train_data, test_data, net, loss,
-            trainer, ctx, num_epochs=1)
+gb.train(train_data, test_data, net, loss, trainer, ctx, num_epochs=1)
 ```
 
-## 结论
+## 小结
 
-Desnet通过将ResNet里的`+`替换成`concat`从而获得更稠密的连接。
+* Desnet通过将ResNet里的`+`替换成`concat`从而获得更稠密的连接。
 
 ## 练习
 
@@ -147,5 +146,6 @@ Desnet通过将ResNet里的`+`替换成`concat`从而获得更稠密的连接。
 - DesNet被人诟病的一个问题是内存消耗过多。真的会这样吗？可以把输入换成$224\times 224$（需要改最后的`AvgPool2D`大小），来看看实际（GPU）内存消耗。
 - 这里的FashionMNIST有必要用100+层的网络吗？尝试将其改简单看看效果。
 
+## 扫码直达[讨论区](https://discuss.gluon.ai/t/topic/1664)
 
-**吐槽和讨论欢迎点**[这里](https://discuss.gluon.ai/t/topic/1664)
+![](../img/qr_densenet-gluon.svg)

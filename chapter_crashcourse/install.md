@@ -1,392 +1,239 @@
-# 安装和使用
+# 安装和运行
 
-## 首次安装
+为了便于动手学深度学习，让我们获取本书代码、安装并运行所需要的工具，例如MXNet。在这一节中，我们将描述安装和运行所需要的命令。执行命令需要进入命令行模式：Linux/macOS用户可以打开Terminal应用，Windows用户可以在文件资源管理器的地址栏输入`cmd`。
 
-每个教程是一个可以编辑和运行的Jupyter notebook。运行这些教程需要`Python`，`Jupyter`，以及最新版`MXNet`。
 
-### 通过Conda安装
-首先根据操作系统下载并安装[Miniconda](https://conda.io/miniconda.html)（[Anaconda](https://docs.continuum.io/anaconda/install/)也可以）。接下来下载所有教程的包（[下载tar.gz格式](https://zh.gluon.ai/gluon_tutorials_zh.tar.gz)或者[下载zip格式](https://zh.gluon.ai/gluon_tutorials_zh.zip)均可）。解压后进入文件夹。
+## 获取代码并安装运行环境
 
-例如Linux或者Mac OSX 10.11以上可以使用如下命令
+我们可以通过Conda或者Docker来获取本书代码并安装运行环境。下面将分别介绍这两种选项。
 
-```{.python .input}
+
+### 选项一：通过Conda安装（推荐）
+
+第一步，根据操作系统下载并安装Miniconda（网址：https://conda.io/miniconda.html ）。
+
+第二步，下载包含本书全部代码的包，解压后进入文件夹。Linux/macOS用户可以使用如下命令。
+
+```bash```
 mkdir gluon-tutorials && cd gluon-tutorials
 curl https://zh.gluon.ai/gluon_tutorials_zh.tar.gz -o tutorials.tar.gz
 tar -xzvf tutorials.tar.gz && rm tutorials.tar.gz
+
 ```
 
-Windows用户可以用浏览器下载[zip格式](https://zh.gluon.ai/gluon_tutorials_zh.zip)并解压，在解压目录文件资源管理器的地址栏输入`cmd`进入命令行模式。
+Windows用户可以用浏览器下载压缩文件（下载地址：https://zh.gluon.ai/gluon_tutorials_zh.zip ）并解压。在解压目录文件资源管理器的地址栏输入`cmd`进入命令行模式。
 
-【可选项】配置下载源来使用国内镜像加速下载:
+在本步骤中，我们也可以配置下载源来使用国内镜像加速下载:
 
-```{.python .input}
-# 优先使用清华conda镜像
+```bash```
+# 优先使用清华 conda 镜像。
 conda config --prepend channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
 
-# 也可选用科大conda镜像
+# 或者选用科大 conda 镜像。
 conda config --prepend channels http://mirrors.ustc.edu.cn/anaconda/pkgs/free/
 ```
 
-然后安装所需的依赖包并激活环境：
 
-```{.python .input}
+第三步，安装运行所需的依赖包并激活该运行环境。Linux/macOS用户可以使用如下命令。
+
+```bash```
 conda env create -f environment.yml
-source activate gluon # 注意Windows下不需要 source
+source activate gluon
+
 ```
 
-之后运行下面命令，然后浏览器打开[http://localhost:8888](http://localhost:8888)（通常会自动打开）就可以查看和运行各个教程了。
+Windows用户可以使用如下命令。
 
-```{.python .input}
+```bash```
+conda env create -f environment.yml
+activate gluon
+```
+
+第四步，打开Juputer notebook。运行下面命令。
+
+```bash```
 jupyter notebook
 ```
 
-【可选项】国内用户可使用国内Gluon镜像加速数据集和预训练模型的下载
+这时在浏览器打开 http://localhost:8888 （通常会自动打开）就可以查看和运行本书中每一节的代码了。
 
-- Linux/OSX用户:
+第五步（可选项），如果你是国内用户，建议使用国内Gluon镜像加速数据集和预训练模型的下载。Linux/macOS用户可以运行下面命令。
 
-  ```bash
-  MXNET_GLUON_REPO=https://apache-mxnet.s3.cn-north-1.amazonaws.com.cn/ jupyter notebook
-  ```
-
-- Windows用户:
-
-  ```bash
-  set MXNET_GLUON_REPO=https://apache-mxnet.s3.cn-north-1.amazonaws.com.cn/ jupyter notebook
-  ```
-
-### 通过docker安装
-首先你需要下载并安装[docker](https://docs.docker.com/engine/installation/)。例如Linux下可以
-
-```{.python .input}
-wget -qO- https://get.docker.com/ | sh
-sudo usermod -aG docker
-# 然后logout一次
+```bash```
+MXNET_GLUON_REPO=https://apache-mxnet.s3.cn-north-1.amazonaws.com.cn/ jupyter notebook
 ```
 
-然后运行下面命令即可
+Windows用户可以运行下面命令。
 
-```{.python .input}
+```bash```
+set MXNET_GLUON_REPO=https://apache-mxnet.s3.cn-north-1.amazonaws.com.cn/ jupyter notebook
+```
+
+### 选项二：通过Docker安装
+
+第一步，下载并安装[Docker](https://docs.docker.com/engine/installation/)。
+
+如果你是Linux用户，可以运行下面命令。之后登出一次。
+
+```bash```
+wget -qO- https://get.docker.com/ | sh
+sudo usermod -aG docker
+```
+
+第二步，运行下面命令。
+
+```bash```
 docker run -p 8888:8888 muli/gluon-tutorials-zh
 ```
 
-然后浏览器打开[http://localhost:8888](http://localhost:8888) ，这时通常需要填docker运行时产生的token。
+第三步，在浏览器打开http://localhost:8888 ，这时通常需要填Docker运行时产生的token。
 
-## 更新教程
+
+## 更新代码和运行环境
 
 目前我们仍然一直在快速更新教程，通常每周都会加入新的章节。同时MXNet的Gluon前端也在快速发展，因此我们推荐大家也做及时的更新。更新包括下载最新的教程，和更新对应的依赖（通常是升级MXNet）。
 
-### 用Conda更新
+由于MXNet在快速发展中，我们会根据改进的MXNet版本定期更新书中的代码。同时，我们也会不断补充新的教学内容，以适应深度学习的快速发展。因此，我们推荐大家定期更新代码和运行环境。以下列举了几种更新选项。
 
-先重新下载新的[zip](https://zh.gluon.ai/gluon_tutorials_zh.zip)或者[tar.gz](https://zh.gluon.ai/gluon_tutorials_zh.tar.gz)教程包。解压后，使用下面命令更新环境
 
-```{.python .input}
+### 选项一：通过Conda更新（推荐）
+
+第一步，重新下载最新的包含本书全部代码的包，解压后进入文件夹。下载地址可以从以下二者之间选择。
+
+* https://zh.gluon.ai/gluon_tutorials_zh.zip
+* https://zh.gluon.ai/gluon_tutorials_zh.tar.gz
+
+第二步，使用下面命令更新运行环境。
+
+```bash```
 conda env update -f environment.yml
 ```
 
-### 用Docker更新
+### 选项二：通过Docker更新
 
-直接下载新的docker image就行。
+我们可以直接下载新的Docker image，例如执行下面的命令。
 
-```{.python .input}
+```
 docker pull muli/gluon-tutorials-zh
 ```
 
-### 使用Git更新
+### 选项三：通过Git更新
 
-如果你熟悉git，那么直接pull并且之后merge冲突
+第一步，如果你熟悉Git操作，可以直接pull并且合并可能造成的冲突：
 
-```{.python .input}
+```
 git pull https://github.com/mli/gluon-tutorials-zh
 ```
 
-如果不想merge冲突，那么可以在`pull`前用reset还原到上一个版本（记得保存有价值的本地修改）
+如果不想造成冲突，在保存完有价值的本地修改以后，你可以在pull前先用reset还原到上次更新的版本：
 
-```{.python .input}
+```
 git reset --hard
 ```
 
-之后更新环境
+第二步，使用下面命令更新运行环境。
 
-```{.python .input}
-conda env update -f environment.yml
 ```
-
-### 使用了MXNet GPU版本
-
-这时候conda update可能不会自动升级GPU版本，因为默认是安装了CPU。这时候可以运行了`source activate gluon`后手动更新MXNet。例如如果安装了`mxnet-cu80`了，那么
-
-```{.python .input}
-pip install -U --pre mxnet-cu80
+conda env update -f environment.yml
 ```
 
 ## 高级选项
 
+以下针对不同的使用场景列举了一些安装和使用上的可选项。如果它们和你无关，请放心忽略。
+
 ### 使用GPU
 
-默认安装的MXNet只支持CPU。有一些教程需要GPU来运行。假设电脑有N卡而且CUDA7.5或者8.0已经安装了，那么先卸载CPU版本
+通过上述方式安装的MXNet只支持CPU。本书中有部分章节需要或推荐使用GPU来运行。假设电脑有Nvidia显卡并且安装了CUDA7.5、8.0或9.0，那么先卸载CPU版本：
 
-```{.python .input}
+```
 pip uninstall mxnet
 ```
 
-然后选择安装下面版本之一：
+然后，根据电脑上安装的CUDA版本，使用以下三者之一安装相应的GPU版MXNet。
 
-```{.python .input}
+```
 pip install --pre mxnet-cu75 # CUDA 7.5
 pip install --pre mxnet-cu80 # CUDA 8.0
+pip install --pre mxnet-cu90 # CUDA 9.0
 ```
 
-【可选项】国内用户可使用豆瓣pypi镜像加速下载:
+我们建议国内用户使用豆瓣pypi镜像加速下载。以mxnet-cu80为例，我们可以使用如下命令。
 
-```{.python .input}
-pip install --pre mxnet-cu75 -i https://pypi.douban.com/simple # CUDA 7.5
+```
 pip install --pre mxnet-cu80 -i https://pypi.douban.com/simple # CUDA 8.0
 ```
 
-### 使用notedown插件来读写github源文件
+需要注意的是，如果你安装GPU版的MXNet，使用`conda update`命令不会自动升级GPU版的MXNet。这时候可以运行了`source activate gluon`后手动更新MXNet。以mxnet-cu80为例，我们可以使用以下命令手动更新MXNet。
 
-注意：这个只推荐给想上github提交改动的小伙伴。
-我们源代码是用markdown格式来存储，而不是jupyter默认的ipynb格式。我们可以用notedown插件来读写markdown格式。下面命令下载源代码并且安装环境：
+```
+pip install --pre mxnet-cu80 # CUDA 8.0
+```
 
-```{.python .input}
+### 用Jupyter Notebook读写GitHub源文件
+
+如果你希望为本书内容做贡献，需要修改在GitHub上Markdown格式的源文件（.md文件非.ipynb文件）。通过notedown插件，我们就可以使用Jupyter Notebook修改并运行Markdown格式的源代码。Linux/macOS用户可以执行以下命令获得GitHub源文件并激活运行环境。
+
+```
 git clone https://github.com/mli/gluon-tutorials-zh
 cd gluon-tutorials-zh
 conda env create -f environment.yml
-source activate gluon # Windows下不需要 source
+source activate gluon # Windows 用户运行 activate gluon
 ```
 
-然后安装notedown，运行Jupyter并加载notedown插件：
+下面安装notedown插件，运行Jupyter Notebook并加载插件：
 
-```{.python .input}
+```
 pip install https://github.com/mli/notedown/tarball/master
 jupyter notebook --NotebookApp.contents_manager_class='notedown.NotedownContentsManager'
 ```
 
-【可选项】默认开启notedown插件
+如果你希望每次运行Jupyter Notebook时默认开启notedown插件，可以参考下面步骤。
 
-首先生成jupyter配置文件（如果已经生成过可以跳过）
+首先，执行下面命令生成Jupyter Notebook配置文件（如果已经生成可以跳过）。
 
-```{.python .input}
+```
 jupyter notebook --generate-config
 ```
 
-将下面这一行加入到生成的配置文件的末尾（Linux/macOS一般在`~/.jupyter/jupyter_notebook_config.py`)
+然后，将下面这一行加入到Jupyter Notebook配置文件的末尾（Linux/macOS上一般在`~/.jupyter/jupyter_notebook_config.py`)
 
-```{.python .input}
+```
 c.NotebookApp.contents_manager_class = 'notedown.NotedownContentsManager'
 ```
 
-之后就只需要运行`jupyter notebook`即可。
+之后，我们只需要运行`jupyter notebook`即可默认开启notedown插件。
 
-### 在远端服务器上运行Jupyter
-Jupyter的一个常用做法是在远端服务器上运行，然后通过 `http://myserver:8888`来访问。
-有时候防火墙阻挡了直接访问对应的端口，但ssh是可以的。如果本地机器是linux或者mac（windows通过第三方软件例如putty应该也能支持），那么可以使用端口映射
 
-```{.python .input}
+### 在远端服务器上运行Jupyter Notebook
+
+有时候，我们希望在远端服务器上运行Jupyter Notebook，并通过本地电脑上的浏览器访问。如果本地机器上安装了Linux或者macOS（Windows通过第三方软件例如putty应该也能支持），那么可以使用端口映射：
+
+```
 ssh myserver -L 8888:localhost:8888
 ```
 
-然后我们可以使用[http://localhost:8888](http://localhost:8888)打开远端的Jupyter。
+以上`myserver`是远端服务器地址。然后我们可以使用 http://localhost:8888 打开远端服务器`myserver`上运行Jupyter Notebook。
 
 ### 运行计时
-我们可以通过ExecutionTime插件来对每个cell的运行计时。
 
-```{.python .input}
+我们可以通过ExecutionTime插件来对Jupyter Notebook的每个代码单元的运行计时。以下是安装该插件的命令。
+
+```
 pip install jupyter_contrib_nbextensions
 jupyter contrib nbextension install --user
 jupyter nbextension enable execute_time/ExecuteTime
 ```
 
-## 老中医自检程序
-
-### 用途
-本教程提供了一系列自检程序供没有成功安装或者运行报错的难民进行自救，如果全篇都没找到药方，希望可以自己搜索问题，欢迎前往 https://discuss.gluon.ai 提问并且帮他人解答。
-
-### 通过Conda安装
-
-确保conda已经安装完成，并且可以在命令行识别到 "conda --version"
-
-#### 症状
-
-```{.python .input}
--bash: conda: command not found ／’conda‘不是内部或外部命令，也不是可运行的程序
-```
-
-##### 病情分析
-
-conda不在系统搜索目录下，无法找到conda可执行文件
-
-##### 药方
-
-```{.python .input}
-# linux或者mac系统
-export PATH=/path/to/miniconda3/bin:$PATH
-# windows用set或者setx
-set PATH=C:\path\to\miniconda3\bin;%PATH%
-```
-
-```{.python .input}
-完成后命令行测试 "conda --version"
-如果显示类似于 “conda 4.3.21”，则症状痊愈
-```
-
-#### 症状
-
-```{.python .input}
-Conda安装正常，conda env -f environment.yml失败
-```
-
-##### 病情分析
-
-如果在国内的网络环境下，最大的可能是连接太慢，用国内镜像加速不失为一良方
-
-##### 药方
-
-* conda config --prepend channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
-* 如果是miniconda可以改用Anaconda
-
-##### 病情分析
-
-失败后重新尝试 conda env -f environment.yml会报错
-##### 药方
-
-conda info -e查看失败信息，建议删除失败的env： conda env remove --name gluon --all
-### 手动pip安装
-
-#### 症状：pip install mxnet失败
-
-##### 病情分析
-
-pip本身不存在, pip --version不能正确显示pip版本号和安装目录
-
-##### 药方
-
-参考http://pip-cn.readthedocs.io/en/latest/installing.html 安装pip
-
-##### 病情分析
-
-pip版本太低
-
-##### 药方
-
-```{.python .input}
-pip install --upgrade pip
-```
-
-##### 病情分析
-
-无法找到匹配的wheel， No matching distribution found for mxnet>=0.11.1b20170902
-
-##### 药方
-
-确保系统被支持，比如Ubuntu 14.04/16.04, Mac10.11/10.12(10.10即将支持）， Windows 10(win7 未测试)， 如果都符合，可以试试命令
-
-```{.python .input}
-python -c "import pip; print(pip.pep425tags.get_supported())"
-```
-
-然后上论坛讨论：https://discuss.gluon.ai
-
-#### 症状： pip install mxnet 成功，但是import mxnet失败
-##### 病情分析
-
-如果看到这样的错误
-
-```{.python .input}
-ImportError: No module named mxnet
-```
-
-python无法找到mxnet，有可能系统上有多个python版本， 导致pip和python版本不一致
-
-##### 药方
-
-找到pip的安装目录
-
-```{.python .input}
-pip --version
-```
-
-找到python安装目录
-
-```{.python .input}
-which python
-# or
-whereis python
-# or
-python -c "import os, sys; print(os.path.dirname(sys.executable))"
-```
-
-如果pip目录和python目录不一致，可以改变默认加载的python，比如
-
-```{.python .input}
-python3 -c "import mxnet as mx; print(mx.__version__)"
-```
-
-或者用和python对应的pip重新安装mxnet
-
-```{.python .input}
-pip3 install mxnet --pre
-pip2 install mxnet --pre
-```
-
-如果不是简单的python2/3的问题，推荐修复默认调用的python。
-
-##### 病情分析
-假设你看到这个错误：
-
-```{.python .input}
-ImportError: libgfortran.so.3: cannot open shared object file: No such file or
-directory
-```
-
-##### 药方
-这个一般发生在Linux下。安装`libgfortran`就好，例如Ubuntu下可以`sudo apt-get
-install libgfortran`
-
-#### 症状：可以import mxnet，但是版本不正常(< 0.11.1b20170908)
-##### 病情分析
-安装时没有指定最新的版本
-
-##### 药方
-可以使用pip install mxnet --upgrade --pre安装最新的mxnet
-
-##### 病情分析
-
-由于系统的问题，无法正确安装最新版本，参考 No matching
-distribution found for mxnet>=0.11.1b20170902
-
-### Jupyter Notebook
-
-#### 症状： 打开notebook乱码
-
-##### 病情分析
-Windows下不支持编码？
-
-##### 未测试药方
-把md文件用文本编辑器保存为GBK编码
-
-### 其他
-
-#### 症状： Windows下curl, tar失败
-
-##### 病情分析
-Windows默认不支持curl，tar
-
-##### 药方
-下载和解压推荐用浏览器和解压软件，手动拷贝
-
-### 最后
-如果你尝试了很多依然一头雾水，可以试试docker安装：https://zh.gluon.ai/install.html#docker
-
-
-
 ## 小结
 
-* 我们需要安装MXNet来动手学深度学习。
+* 为了能够动手学深度学习，我们需要获取本书代码并安装运行环境。
+* 我们建议大家定期更新代码和运行环境。
+
 
 ## 练习
 
-* 安装MXNet。
+* 获取本书代码并安装运行环境。如果你在安装时碰到任何问题，请查阅讨论区中的疑难问题汇总，或者向社区小伙伴们提问。
+
 
 ## 扫码直达[讨论区](https://discuss.gluon.ai/t/topic/249)
 

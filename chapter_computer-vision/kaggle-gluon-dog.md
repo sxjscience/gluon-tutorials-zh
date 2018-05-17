@@ -1,4 +1,4 @@
-# 实战Kaggle比赛——使用Gluon识别120种狗 (ImageNet Dogs)
+# 实战Kaggle比赛：识别120种狗 (ImageNet Dogs)
 
 
 我们在本章中选择了Kaggle中的[120种狗类识别问题](https://www.kaggle.com/c/dog-breed-identification)。这是著名的ImageNet的子集数据集。与之前的[CIFAR-10原始图像分类问题](kaggle-gluon-cifar10.md)不同，本问题中的图片文件大小更接近真实照片大小，且大小不一。本问题的输出也变的更加通用：我们将输出每张图片对应120种狗的分别概率。
@@ -254,7 +254,7 @@ def get_net(ctx):
 import datetime
 import sys
 sys.path.append('..')
-import utils
+import gluonbook as gb
 
 def get_loss(data, net, ctx):
     loss = 0.0
@@ -310,7 +310,7 @@ def train(net, train_data, valid_data, num_epochs, lr, wd, ctx, lr_period,
 另外，微调一个预训练模型往往不需要特别久的额外训练。依据下面的参数设置，优化算法的学习率设为0.01，并将在每10个epoch自乘0.1。
 
 ```{.python .input  n=9}
-ctx = utils.try_gpu()
+ctx = gb.try_gpu()
 num_epochs = 1
 learning_rate = 0.01
 weight_decay = 1e-4
@@ -367,4 +367,6 @@ with open('submission.csv', 'w') as f:
 * 使用Kaggle完整数据集，把batch_size和num_epochs分别调大些，可以在Kaggle上拿到什么样的准确率和名次？
 * 你还有什么其他办法可以继续改进模型和参数？小伙伴们都期待你的分享。
 
-**吐槽和讨论欢迎点**[这里](https://discuss.gluon.ai/t/topic/2399)
+## 扫码直达[讨论区](https://discuss.gluon.ai/t/topic/2399)
+
+![](../img/qr_kaggle-gluon-dog.svg)

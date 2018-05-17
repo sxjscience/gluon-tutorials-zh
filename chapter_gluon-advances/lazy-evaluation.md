@@ -2,11 +2,11 @@
 
 MXNet使用惰性计算（lazy evaluation）来提升计算性能。理解它的工作原理既有助于开发更高效的程序，又有助于在内存资源有限的情况下主动降低计算性能从而减小内存开销。
 
-我们先导入本节中实验需要的包。
+我们先导入本节中实验需要的包或模块。
 
 ```{.python .input  n=1}
 from mxnet import autograd, gluon, nd
-from mxnet.gluon import nn
+from mxnet.gluon import loss as gloss, nn
 import os
 import subprocess
 from time import time
@@ -128,39 +128,38 @@ a + b
 
 上例中，第一句和第二句之间没有依赖。所以，把`b = 2`提前到`a = 1`前执行也是可以的。但这样可能会导致内存使用的变化。
 
-为了解释惰性计算对内存使用的影响，让我们先回忆一下前面章节的内容。在前面章节中实现的模型训练过程中，我们通常会在每个小批量上评测一下模型，例如模型的损失或者精度。细心的读者也许发现了，这类评测常用到同步函数，例如`asscalar`或者`asnumpy`。如果去掉这些同步函数，前端会将大量的小批量计算任务同时放进后端，从而可能导致较大的内存开销。当我们在每个小批量上都使用同步函数时，前端在每次迭代时仅会将一个小批量的任务放进后端执行计算。换言之，我们通过适当减少惰性计算，从而减小内存开销。这也是一种“时间换空间”的策略。
+为了解释惰性计算对内存使用的影响，让我们先回忆一下前面章节的内容。在前面章节中实现的模型训练过程中，我们通常会在每个小批量上评测一下模型，例如模型的损失或者精度。细心的你也许发现了，这类评测常用到同步函数，例如`asscalar`或者`asnumpy`。如果去掉这些同步函数，前端会将大量的小批量计算任务同时放进后端，从而可能导致较大的内存开销。当我们在每个小批量上都使用同步函数时，前端在每次迭代时仅会将一个小批量的任务放进后端执行计算。换言之，我们通过适当减少惰性计算，从而减小内存开销。这也是一种“时间换空间”的策略。
 
-由于深度学习模型通常比较大，而内存资源通常有限，我们建议读者在训练模型时对每个小批量都使用同步函数。类似地，在使用模型预测时，为了减小内存开销，我们也建议读者对每个小批量预测时都使用同步函数，例如直接打印出当前批量的预测结果。
+由于深度学习模型通常比较大，而内存资源通常有限，我们建议大家在训练模型时对每个小批量都使用同步函数。类似地，在使用模型预测时，为了减小内存开销，我们也建议大家对每个小批量预测时都使用同步函数，例如直接打印出当前批量的预测结果。
 
 下面我们来演示惰性计算对内存使用的影响。我们先定义一个数据获取函数，它会从被调用时开始计时，并定期打印到目前为止获取数据批量总共耗时。
 
 ```{.python .input  n=11}
 num_batches = 41
-def get_data():
+def data_iter():
     start = time()
     batch_size = 1024
     for i in range(num_batches):
         if i % 10 == 0:
             print('batch %d, time %f sec' % (i, time() - start))
-        x = nd.random.normal(shape=(batch_size, 512))
+        X = nd.random.normal(shape=(batch_size, 512))
         y = nd.ones((batch_size,))
-        yield x, y
+        yield X, y
 ```
 
 以下定义多层感知机、优化器和损失函数。
 
 ```{.python .input  n=12}
 net = nn.Sequential()
-with net.name_scope():
-    net.add(
-        nn.Dense(2048, activation='relu'),
-        nn.Dense(512, activation='relu'),
-        nn.Dense(1),
-    )
+net.add(
+    nn.Dense(2048, activation='relu'),
+    nn.Dense(512, activation='relu'),
+    nn.Dense(1),
+)
 net.initialize()
 trainer = gluon.Trainer(net.collect_params(), 'sgd',
                         {'learning_rate':0.005})
-square_loss = gluon.loss.L2Loss()
+loss = gloss.L2Loss()
 ```
 
 这里定义辅助函数来监测内存的使用。需要注意的是，这个函数只能在Linux运行。
@@ -171,60 +170,40 @@ def get_mem():
     return int(str(res).split()[15]) / 1e3
 ```
 
-现在我们可以做测试了。我们先试运行一次让系统把`net`的参数初始化。相关内容请参见[“模型参数”](../chapter_gluon-basics/parameters.md)一节。
+现在我们可以做测试了。我们先试运行一次让系统把`net`的参数初始化。相关内容请参见[“模型参数的延后初始化”](../chapter_gluon-basics/deferred-init.md)一节。
 
 ```{.python .input  n=14}
-for x, y in get_data():
+for X, y in data_iter():
     break
-square_loss(y, net(x)).wait_to_read()
+loss(y, net(X)).wait_to_read()
 ```
 
-如果我们用`net`来做预测，通常情况下我们可以把每个小批量的结果通过同步函数从NDArray格式中取出，例如打印或者保存在磁盘上。这里我们使用`wait_to_read`来模拟。此时，每个小批量的生成间隔较长，不过内存开销较小。
-
-```{.python .input  n=15}
-mem = get_mem()
-for x, y in get_data():
-    square_loss(y, net(x)).wait_to_read()
-nd.waitall()
-print('increased memory: %f MB' % (get_mem() - mem))
-```
-
-假设我们不使用`wait_to_read()`，默认惰性计算下，前端会将所有小批量计算一次性添加进后端。可以看到，每个小批量的生成间隔较短。然而，此时内存开销较大：它包括了在内存中保存的所有`x`和`y`。
-
-```{.python .input  n=16}
-mem = get_mem()
-for x, y in get_data():
-    square_loss(y, net(x))
-nd.waitall()
-print('increased memory: %f MB' % (get_mem() - mem))
-```
-
-对于训练`net`来说，假设我们希望打印每个迭代周期后的模型损失，我们可以自然地使用同步函数`asscalar`和`print`来避免内存开销过大。
+对于训练`net`来说，我们可以自然地使用同步函数`asscalar`将每个小批量的损失从NDArray格式中取出，并打印每个迭代周期后的模型损失。此时，每个小批量的生成间隔较长，不过内存开销较小。
 
 ```{.python .input  n=17}
 mem = get_mem()
 for epoch in range(1, 3):
-    total_loss = 0
-    for x, y in get_data():
+    l_sum = 0
+    for X, y in data_iter():
         with autograd.record():
-            loss = square_loss(y, net(x))
-        total_loss += loss.mean().asscalar()
-        loss.backward()
-        trainer.step(x.shape[0])
-    print('epoch', epoch, ' loss: ', total_loss / num_batches)
+            l = loss(y, net(X))
+        l_sum += l.mean().asscalar()
+        l.backward()
+        trainer.step(X.shape[0])
+    print('epoch', epoch, ' loss: ', l_sum / num_batches)
 nd.waitall()
 print('increased memory: %f MB' % (get_mem() - mem))
 ```
 
-但如果去掉同步函数，训练过程中可能会导致内存开销过大。
+如果去掉同步函数，虽然每个小批量的生成间隔较短，训练过程中可能会导致内存开销过大。这是因为默认惰性计算下，前端会将所有小批量计算一次性添加进后端。
 
 ```{.python .input  n=18}
 mem = get_mem()
 for epoch in range(1, 3):
-    for x, y in get_data():
+    for X, y in data_iter():
         with autograd.record():
-            loss = square_loss(y, net(x))
-        loss.backward()
+            l = loss(y, net(X))
+        l.backward()
         trainer.step(x.shape[0])
 nd.waitall()
 print('increased memory: %f MB' % (get_mem() - mem))

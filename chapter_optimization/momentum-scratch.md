@@ -80,17 +80,16 @@ def sgd_momentum(params, vs, lr, mom, batch_size):
 
 ## 实验
 
-首先，导入本节中实验所需的包。
+首先，导入本节中实验所需的包或模块。
 
 ```{.python .input}
-%config InlineBackend.figure_format = 'retina'
 %matplotlib inline
 import sys
-import mxnet as mx
-from mxnet import autograd, gluon, nd
-import numpy as np
 sys.path.append('..')
-import utils
+import gluonbook as gb
+import mxnet as mx
+from mxnet import autograd, nd
+import numpy as np
 ```
 
 实验中，我们以之前介绍过的线性回归为例。设数据集的样本数为1000，我们使用权重`w`为[2, -3.4]，偏差`b`为4.2的线性回归模型来生成数据集。该模型的平方损失函数即所需优化的目标函数，模型参数即目标函数自变量。
@@ -101,9 +100,9 @@ num_inputs = 2
 num_examples = 1000
 true_w = [2, -3.4]
 true_b = 4.2
-X = nd.random.normal(scale=1, shape=(num_examples, num_inputs))
-y = true_w[0] * X[:, 0] + true_w[1] * X[:, 1] + true_b
-y += 0.01 * nd.random.normal(scale=1, shape=y.shape)
+features = nd.random.normal(scale=1, shape=(num_examples, num_inputs))
+labels = true_w[0] * features[:, 0] + true_w[1] * features[:, 1] + true_b
+labels += nd.random.normal(scale=0.01, shape=labels.shape)
 
 # 初始化模型参数。
 def init_params():
@@ -121,28 +120,27 @@ def init_params():
 优化函数`optimize`与[“梯度下降和随机梯度下降——从零开始”](gd-sgd-scratch.md)一节中的类似。
 
 ```{.python .input  n=3}
-net = utils.linreg
-squared_loss = utils.squared_loss
+net = gb.linreg
+loss = gb.squared_loss
 
 def optimize(batch_size, lr, mom, num_epochs, log_interval):
     [w, b], vs = init_params()
-    y_vals = [squared_loss(net(X, w, b), y).mean().asnumpy()]
+    ls = [loss(net(features, w, b), labels).mean().asnumpy()]
     for epoch in range(1, num_epochs + 1):
         # 学习率自我衰减。
         if epoch > 2:
             lr *= 0.1
-        for batch_i, (features, label) in enumerate(
-            utils.data_iter(batch_size, num_examples, X, y)):
+        for batch_i, (X, y) in enumerate(
+            gb.data_iter(batch_size, num_examples, features, labels)):
             with autograd.record():
-                output = net(features, w, b)
-                loss = squared_loss(output, label)
-            loss.backward()
+                l = loss(net(X, w, b), y)
+            l.backward()
             sgd_momentum([w, b], vs, lr, mom, batch_size)
             if batch_i * batch_size % log_interval == 0:
-                y_vals.append(squared_loss(net(X, w, b), y).mean().asnumpy())
+                ls.append(loss(net(features, w, b), labels).mean().asnumpy())
     print('w:', w, '\nb:', b, '\n')
-    x_vals = np.linspace(0, num_epochs, len(y_vals), endpoint=True)
-    utils.semilogy(x_vals, y_vals, 'epoch', 'loss')
+    es = np.linspace(0, num_epochs, len(ls), endpoint=True)
+    gb.semilogy(es, ls, 'epoch', 'loss')
 ```
 
 我们先将动量超参数$\gamma$（`mom`）设0.99。此时，小梯度随机梯度下降可被看作使用了特殊梯度：这个特殊梯度是最近100个时刻的$100\nabla f_\mathcal{B}(\boldsymbol{x})$的加权平均。我们观察到，损失函数值在3个迭代周期后上升。这很可能是由于特殊梯度中较大的系数100造成的。

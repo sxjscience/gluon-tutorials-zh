@@ -19,7 +19,7 @@ $$\boldsymbol{v} \leftarrow \beta_1 \boldsymbol{v} + (1 - \beta_1) \boldsymbol{g
 
 $$\boldsymbol{s} \leftarrow \beta_2 \boldsymbol{s} + (1 - \beta_2) \boldsymbol{g} \odot \boldsymbol{g}. $$
 
-我们在[动量法——从零开始](momentum-scratch.md)一节中解释了，$\boldsymbol{v}$和$\boldsymbol{s}$可分别看作是最近$1/(1 - \beta_1)$个时刻$\boldsymbol{g}$和最近$1 / (1 - \beta_2)$个时刻的$\boldsymbol{g} \odot \boldsymbol{g}$的加权平均。假设$\beta_1 = 0.9$，$\beta_2 = 0.999$，如果$\boldsymbol{v}$和$\boldsymbol{s}$中的元素都初始化为0，在时刻1我们得到$\boldsymbol{v} = 0.1\boldsymbol{g}$，$\boldsymbol{s} = 0.001\boldsymbol{g} \odot \boldsymbol{g}$。实际上，在迭代初期$t$较小时，$\boldsymbol{v}$和$\boldsymbol{s}$可能过小而无法较准确地估计$\boldsymbol{g}$和$\boldsymbol{g} \odot \boldsymbol{g}$。为此，Adam算法使用了偏差修正：
+我们在[“动量法——从零开始”](momentum-scratch.md)一节中解释了，$\boldsymbol{v}$和$\boldsymbol{s}$可分别看作是最近$1/(1 - \beta_1)$个时刻$\boldsymbol{g}$和最近$1 / (1 - \beta_2)$个时刻的$\boldsymbol{g} \odot \boldsymbol{g}$的加权平均。假设$\beta_1 = 0.9$，$\beta_2 = 0.999$，如果$\boldsymbol{v}$和$\boldsymbol{s}$中的元素都初始化为0，在时刻1我们得到$\boldsymbol{v} = 0.1\boldsymbol{g}$，$\boldsymbol{s} = 0.001\boldsymbol{g} \odot \boldsymbol{g}$。实际上，在迭代初期$t$较小时，$\boldsymbol{v}$和$\boldsymbol{s}$可能过小而无法较准确地估计$\boldsymbol{g}$和$\boldsymbol{g} \odot \boldsymbol{g}$。为此，Adam算法使用了偏差修正：
 
 $$\hat{\boldsymbol{v}} \leftarrow \frac{\boldsymbol{v}}{1 - \beta_1^t}, $$
 
@@ -61,17 +61,16 @@ def adam(params, vs, sqrs, lr, batch_size, t):
 
 ## 实验
 
-首先，导入实验所需的包。
+首先，导入实验所需的包或模块。
 
 ```{.python .input}
-%config InlineBackend.figure_format = 'retina'
 %matplotlib inline
 import sys
-import mxnet as mx
-from mxnet import autograd, gluon, nd
-import numpy as np
 sys.path.append('..')
-import utils
+import gluonbook as gb
+import mxnet as mx
+from mxnet import autograd, nd
+import numpy as np
 ```
 
 实验中，我们依然以线性回归为例。设数据集的样本数为1000，我们使用权重`w`为[2, -3.4]，偏差`b`为4.2的线性回归模型来生成数据集。该模型的平方损失函数即所需优化的目标函数，模型参数即目标函数自变量。
@@ -84,9 +83,9 @@ num_inputs = 2
 num_examples = 1000
 true_w = [2, -3.4]
 true_b = 4.2
-X = nd.random.normal(scale=1, shape=(num_examples, num_inputs))
-y = true_w[0] * X[:, 0] + true_w[1] * X[:, 1] + true_b
-y += 0.01 * nd.random.normal(scale=1, shape=y.shape)
+features = nd.random.normal(scale=1, shape=(num_examples, num_inputs))
+labels = true_w[0] * features[:, 0] + true_w[1] * features[:, 1] + true_b
+labels += nd.random.normal(scale=0.01, shape=labels.shape)
 
 # 初始化模型参数。
 def init_params():
@@ -106,28 +105,27 @@ def init_params():
 优化函数`optimize`与[“Adagrad——从零开始”](adagrad-scratch.md)一节中的类似。
 
 ```{.python .input  n=2}
-net = utils.linreg
-squared_loss = utils.squared_loss
+net = gb.linreg
+loss = gb.squared_loss
 
 def optimize(batch_size, lr, num_epochs, log_interval):
     [w, b], vs, sqrs = init_params()
-    y_vals = [squared_loss(net(X, w, b), y).mean().asnumpy()]
+    ls = [loss(net(features, w, b), labels).mean().asnumpy()]
     t = 0
     for epoch in range(1, num_epochs + 1):
-        for batch_i, (features, label) in enumerate(
-            utils.data_iter(batch_size, num_examples, X, y)):
+        for batch_i, (X, y) in enumerate(
+            gb.data_iter(batch_size, num_examples, features, labels)):
             with autograd.record():
-                output = net(features, w, b)
-                loss = squared_loss(output, label)
-            loss.backward()
+                l = loss(net(X, w, b), y)
+            l.backward()
             # 必须在调用Adam前。
             t += 1
             adam([w, b], vs, sqrs, lr, batch_size, t)
             if batch_i * batch_size % log_interval == 0:
-                y_vals.append(squared_loss(net(X, w, b), y).mean().asnumpy())
+                ls.append(loss(net(features, w, b), labels).mean().asnumpy())
     print('w:', w, '\nb:', b, '\n')
-    x_vals = np.linspace(0, num_epochs, len(y_vals), endpoint=True)
-    utils.semilogy(x_vals, y_vals, 'epoch', 'loss')
+    es = np.linspace(0, num_epochs, len(ls), endpoint=True)
+    gb.semilogy(es, ls, 'epoch', 'loss')
 ```
 
 最终，优化所得的模型参数值与它们的真实值较接近。
@@ -154,4 +152,4 @@ optimize(batch_size=10, lr=0.1, num_epochs=3, log_interval=10)
 
 ## 参考文献
 
-[1] Kingma, D. P., & Ba, J. (2014). Adam: A Method for Stochastic Optimization. arXiv preprint arXiv:1412.6980.
+[1] Kingma, Diederik P., and Jimmy Ba. "Adam: A method for stochastic optimization." arXiv preprint arXiv:1412.6980 (2014).

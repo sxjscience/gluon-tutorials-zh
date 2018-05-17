@@ -1,12 +1,3 @@
-如果读者一直按照本书的顺序读到这里，很可能已经使用了优化算法来训练深度学习模型。具体来说，在训练模型时，我们会使用优化算法不断迭代模型参数以最小化模型的损失函数。当迭代终止时，模型的训练随之终止。此时的模型参数就是模型通过训练所学习到的参数。
-
-优化算法对于深度学习十分重要。一方面，如图7.1所表现的那样，训练一个复杂的深度学习模型可能需要数小时、数日、甚至数周时间。而优化算法的表现直接影响模型训练效率。另一方面，理解各种优化算法的原理以及其中各参数的意义将有助于我们更有针对性地调参，从而使深度学习模型表现地更好。
-
-本章将详细介绍深度学习中的常用优化算法。
-
-![漫画：训练深度学习模型](../img/training_model.png)
-
-
 # 优化算法概述
 
 本节将讨论优化与深度学习的关系以及优化在深度学习中的挑战。
@@ -30,18 +21,17 @@
 
 绝大多数深度学习中的目标函数都很复杂。因此，很多优化问题并不存在解析解，而需要使用基于数值方法的优化算法找到近似解。这类优化算法一般通过不断迭代更新解的数值来找到近似解。我们讨论的优化算法都是这类基于数值方法的算法。
 
-优化在深度学习中有很多挑战。以下描述了其中的两个挑战：局部最小值和鞍点。为了更好地描述问题，我们先导入本节中实验需要的包。
+优化在深度学习中有很多挑战。以下描述了其中的两个挑战：局部最小值和鞍点。为了更好地描述问题，我们先导入本节中实验需要的包或模块。
 
 ```{.python .input  n=1}
 %matplotlib inline
-%config InlineBackend.figure_format = 'retina'
 import sys
+sys.path.append('..')
+import gluonbook as gb
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 import numpy as np
-sys.path.append('..')
-import utils
 ```
 
 ### 局部最小值
@@ -58,9 +48,9 @@ $$f(x) = x \cdot \text{cos}(\pi x), \qquad -1.0 \leq x \leq 2.0,$$
 def f(x):
     return x * np.cos(np.pi * x)
 
-utils.set_fig_size(mpl, (4.5, 2.5))
+gb.set_fig_size(mpl, (4.5, 2.5))
 x = np.arange(-1.0, 2.0, 0.1)
-fig = plt.figure()
+fig = gb.plt.figure()
 subplt = fig.add_subplot(111)
 subplt.annotate('local minimum', xy=(-0.3, -0.25), xytext=(-0.77, -1.0),
                 arrowprops=dict(facecolor='black', shrink=0.05))
@@ -99,7 +89,7 @@ plt.show()
 
 $$f(x, y) = x^2 - y^2.$$
 
-我们可以找出该函数的鞍点位置。也许读者已经发现了，该函数看起来像一个马鞍，而鞍点恰好是马鞍上可坐区域的中心。
+我们可以找出该函数的鞍点位置。也许你已经发现了，该函数看起来像一个马鞍，而鞍点恰好是马鞍上可坐区域的中心。
 
 ```{.python .input  n=4}
 fig = plt.figure()
