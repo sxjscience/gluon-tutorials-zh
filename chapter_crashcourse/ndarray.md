@@ -2,7 +2,7 @@
 
 在深度学习中，我们通常会频繁地对数据进行操作。作为动手学深度学习的基础，本节将介绍如何对内存中的数据进行操作。
 
-在MXNet中，NDArray是存储和转换数据的主要工具。如果你之前用过NumPy，你会发现NDArray和NumPy的多维数组非常类似。然而，NDArray提供更多的功能，例如CPU和GPU的异步计算，以及自动求导。这些都使得NDArray更加适合深度学习。
+在MXNet中，NDArray是存储和变换数据的主要工具。如果你之前用过NumPy，你会发现NDArray和NumPy的多维数组非常类似。然而，NDArray提供更多的功能，例如CPU和GPU的异步计算，以及自动求导。这些都使得NDArray更加适合深度学习。
 
 
 ## 创建NDArray
@@ -130,9 +130,7 @@ x.norm().asscalar()
 ```{.python .input  n=14}
 a = nd.arange(3).reshape((3, 1))
 b = nd.arange(2).reshape((1, 2))
-print('a:', a)
-print('b:', b)
-print('a + b:', a + b)
+a, b, a+b
 ```
 
 由于`a`和`b`分别是3行1列和1行2列的矩阵，为了使它们可以按元素相加，计算时`a`中第一列的三个元素被广播（复制）到了第二列，而`b`中第一行的两个元素被广播（复制）到了第二行和第三行。如此，我们就可以对两个3行2列的矩阵按元素相加，得到上面的结果。
@@ -181,8 +179,7 @@ id(x) == before
 
 ```{.python .input  n=19}
 x = nd.arange(9).reshape((3, 3))
-print('x:', x)
-x[1:3]
+x, x[1:3]
 ```
 
 我们可以指定NDArray中需要访问的单个元素的位置，例如矩阵中行和列的索引，并重设该元素的值。
@@ -199,22 +196,22 @@ x[1:2, 1:3] = 10
 x
 ```
 
-## NDArray和NumPy相互转换
+## NDArray和NumPy相互变换
 
 我们可以通过`array`和`asnumpy`函数令数据在NDArray和Numpy格式之间相互转换。以下是一个例子。
 
 ```{.python .input  n=22}
 import numpy as np
 x = np.ones((2, 3))
-y = nd.array(x)  # NumPy转换成NDArray。
-z = y.asnumpy()  # NDArray转换成NumPy。
-print([z, y])
+y = nd.array(x)  # NumPy变换成NDArray。
+z = y.asnumpy()  # NDArray变换成NumPy。
+z, y
 ```
 
 ## 小结
 
-* NDArray是MXNet中存储和转换数据的主要工具。
-* 我们可以轻松地对NDArray进行创建、运算、指定索引和与NumPy之间的相互转换。
+* NDArray是MXNet中存储和变换数据的主要工具。
+* 我们可以轻松地对NDArray进行创建、运算、指定索引和与NumPy之间的相互变换。
 
 
 ## 练习

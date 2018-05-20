@@ -1,23 +1,9 @@
 # 欠拟合和过拟合
 
-你有没有类似这样的体验？考试前突击背了模拟题的答案，模拟题随意秒杀。但考试时出的题即便和模拟题相关，只要不是原题依然容易考挂。换种情况来说，如果考试前通过自己的学习能力从模拟题的答案里总结出一个比较通用的解题套路，考试时碰到这些模拟题的变种更容易答对。
+在前几节基于Fashion-MNIST数据集的实验中，我们评价了模型在训练数据集和测试数据集上的表现。如果你动手改变过实验中的模型结构或者超参数的话，你也许发现了：当模型在训练数据集上更准确时，在测试数据集上的准确率既可能上升又可能下降。这是为什么呢？
 
-有人曾依据这种现象对学生群体简单粗暴地做了如下划分：
 
-![](../img/student_categories.png)
-
-这里简要总结上图中学生的特点：
-
-* 学渣：能力不行，也不认真做作业，容易考挂
-* 学痞：能力不错，但喜欢裸奔，但还是可能考得比学渣好
-* 学痴：能力不行，但贵在认真，考不赢学霸但秒掉学渣毫无压力
-* 学霸：有能力，而且卖力，考完后喜大普奔
-
-（现在问题来了，学酥应该在上图的哪里？）
-
-学生的考试成绩和看起来与自身的训练量以及自身的学习能力有关。但即使是在科技进步的今天，我们依然没有完全知悉人类大脑学习的所有奥秘。的确，依赖数据训练的机器学习和人脑学习不一定完全相同。但有趣的是，机器学习模型也可能由于自身不同的训练量和不同的学习能力而产生不同的测试效果。为了科学地阐明这个现象，我们需要从若干机器学习的重要概念开始讲解。
-
-## 训练误差（模考成绩）和泛化误差（考试成绩）
+## 训练误差和泛化误差
 
 在实践中，机器学习模型通常在训练数据集上训练并不断调整模型里的参数。之后，我们通常把训练得到的模型在一个区别于训练数据集的测试数据集上测试，并根据测试结果评价模型的好坏。机器学习模型在训练数据集上表现出的误差叫做**训练误差**，在任意一个测试数据样本上表现出的误差的期望值叫做**泛化误差**。
 
@@ -76,12 +62,19 @@ $$y = 1.2x - 3.4x^2 + 5.6x^3 + 5.0 + \text{noise}$$
 需要注意的是，我们用以上相同的数据生成函数来生成训练数据集和测试数据集。两个数据集的样本数都是100。
 
 ```{.python .input}
-from mxnet import ndarray as nd
-from mxnet import autograd
-from mxnet import gluon
+%matplotlib inline
+import sys
+sys.path.append('..')
+import gluonbook as gb
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from mxnet import autograd, gluon, nd
+from mxnet.gluon import data as gdata, loss as gloss, nn
+```
 
-num_train = 100
-num_test = 100
+```{.python .input}
+n_train = 100
+n_test = 100
 true_w = [1.2, -3.4, 5.6]
 true_b = 5.0
 ```
@@ -89,12 +82,21 @@ true_b = 5.0
 下面生成数据集。
 
 ```{.python .input}
-x = nd.random.normal(shape=(num_train + num_test, 1))
-X = nd.concat(x, nd.power(x, 2), nd.power(x, 3))
-y = true_w[0] * X[:, 0] + true_w[1] * X[:, 1] + true_w[2] * X[:, 2] + true_b
-y += .1 * nd.random.normal(shape=y.shape)
+features = nd.random.normal(shape=(n_train + n_test, 1))
+poly_features = nd.concat(features, nd.power(features, 2),
+                          nd.power(features, 3))
+labels = (true_w[0] * poly_features[:, 0] + true_w[1] * poly_features[:, 1]
+          + true_w[2] * poly_features[:, 2] + true_b)
+labels += nd.random.normal(scale=0.1, shape=labels.shape)
+```
 
-('x:', x[:5], 'X:', X[:5], 'y:', y[:5])
+```{.python .input}
+features[:5], poly_features[:5], labels[:5]
+```
+
+```{.python .input}
+num_epochs = 100
+loss = gloss.L2Loss()
 ```
 
 ### 定义训练和测试步骤
@@ -104,49 +106,35 @@ y += .1 * nd.random.normal(shape=y.shape)
 以下的训练步骤在[使用Gluon的线性回归](linear-regression-gluon.md)有过详细描述。这里不再赘述。
 
 ```{.python .input}
-%matplotlib inline
-import matplotlib as mpl
-mpl.rcParams['figure.dpi']= 120
-import matplotlib.pyplot as plt
+gb.set_fig_size(mpl)
 
-def train(X_train, X_test, y_train, y_test):
-    # 线性回归模型
-    net = gluon.nn.Sequential()
-    with net.name_scope():
-        net.add(gluon.nn.Dense(1))
+def fit_and_plot(train_features, test_features, train_labels, test_labels):
+    net = nn.Sequential()
+    net.add(nn.Dense(1))
     net.initialize()
-    # 设一些默认参数
-    learning_rate = 0.01
-    epochs = 100
-    batch_size = min(10, y_train.shape[0])
-    dataset_train = gluon.data.ArrayDataset(X_train, y_train)
-    data_iter_train = gluon.data.DataLoader(
-        dataset_train, batch_size, shuffle=True)
-    # 默认SGD和均方误差
-    trainer = gluon.Trainer(net.collect_params(), 'sgd', {
-        'learning_rate': learning_rate})
-    square_loss = gluon.loss.L2Loss()
-    # 保存训练和测试损失
-    train_loss = []
-    test_loss = []
-    for e in range(epochs):
-        for data, label in data_iter_train:
+    batch_size = min(10, train_labels.shape[0])
+    train_iter = gdata.DataLoader(gdata.ArrayDataset(
+        train_features, train_labels), batch_size, shuffle=True)
+    trainer = gluon.Trainer(net.collect_params(), 'sgd',
+                            {'learning_rate': 0.01})
+    train_ls, test_ls = [], []
+    for _ in range(num_epochs):
+        for X, y in train_iter:
             with autograd.record():
-                output = net(data)
-                loss = square_loss(output, label)
-            loss.backward()
+                l = loss(net(X), y)
+            l.backward()
             trainer.step(batch_size)
-        train_loss.append(square_loss(
-            net(X_train), y_train).mean().asscalar())
-        test_loss.append(square_loss(
-            net(X_test), y_test).mean().asscalar())
-    # 打印结果    
-    plt.plot(train_loss)
-    plt.plot(test_loss)
+        train_ls.append(loss(net(train_features),
+                             train_labels).mean().asscalar())
+        test_ls.append(loss(net(test_features),
+                            test_labels).mean().asscalar())
+    plt.xlabel('epochs')
+    plt.ylabel('loss')
+    plt.semilogy(range(1, num_epochs+1), train_ls)
+    plt.semilogy(range(1, num_epochs+1), test_ls)
     plt.legend(['train','test'])
     plt.show()
-    return ('learned weight', net[0].weight.data(), 
-            'learned bias', net[0].bias.data())
+    return ('weight:', net[0].weight.data(), 'bias:', net[0].bias.data())
 ```
 
 ### 三阶多项式拟合（正常）
@@ -154,7 +142,8 @@ def train(X_train, X_test, y_train, y_test):
 我们先使用与数据生成函数同阶的三阶多项式拟合。实验表明这个模型的训练误差和在测试数据集的误差都较低。训练出的模型参数也接近真实值。
 
 ```{.python .input}
-train(X[:num_train, :], X[num_train:, :], y[:num_train], y[num_train:])
+fit_and_plot(poly_features[:n_train, :], poly_features[n_train:, :],
+             labels[:n_train], labels[n_train:])
 ```
 
 ### 线性拟合（欠拟合）
@@ -162,7 +151,8 @@ train(X[:num_train, :], X[num_train:, :], y[:num_train], y[num_train:])
 我们再试试线性拟合。很明显，该模型的训练误差很高。线性模型在非线性模型（例如三阶多项式）生成的数据集上容易欠拟合。
 
 ```{.python .input}
-train(x[:num_train, :], x[num_train:, :], y[:num_train], y[num_train:])
+fit_and_plot(features[:n_train, :], features[n_train:, :], labels[:n_train],
+             labels[n_train:])
 ```
 
 ### 训练量不足（过拟合）
@@ -170,7 +160,8 @@ train(x[:num_train, :], x[num_train:, :], y[:num_train], y[num_train:])
 事实上，即便是使用与数据生成模型同阶的三阶多项式模型，如果训练量不足，该模型依然容易过拟合。让我们仅仅使用两个训练样本来训练。很显然，训练样本过少了，甚至少于模型参数的数量。这使模型显得过于复杂，以至于容易被训练数据集中的噪音影响。在机器学习过程中，即便训练误差很低，但是测试数据集上的误差很高。这是典型的过拟合现象。
 
 ```{.python .input}
-train(X[0:2, :], X[num_train:, :], y[0:2], y[num_train:])
+fit_and_plot(poly_features[0:2, :], poly_features[n_train:, :], labels[0:2],
+             labels[n_train:])
 ```
 
 我们还将在后面的章节继续讨论过拟合问题以及应对过拟合的方法，例如正则化。
